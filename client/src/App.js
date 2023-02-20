@@ -1,0 +1,103 @@
+import React, { useState, useEffect, useContext } from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
+import "./App.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import Navbars from "./components/Navbars";
+import Beranda from "./pages/Beranda";
+import Pay from "./pages/Pay";
+import Transaction from "./pages/Transaction";
+import AddMusic from "./pages/AddMusic";
+import AddArtist from "./pages/AddArtist";
+import PageNotFound from "./pages/Error";
+import { API, setAuthToken } from "./config/api";
+import { UserContext } from "./context/userContext";
+import PrivateRouteAdmin from "./components/PrivateRouteAdmin";
+import Music from "./pages/Music";
+import "react-jinke-music-player/assets/index.css";
+import AllMusic from "./pages/AllMusic";
+
+function App() {
+  let navigate = useNavigate();
+  const [state, dispatch] = useContext(UserContext);
+  const [isLoading, setIsLoading] = useState(true);
+
+  console.log(state);
+  useEffect(() => {
+    if (localStorage.token) {
+      setAuthToken(localStorage.token);
+    }
+
+    if (!isLoading) {
+      if (state.isLogin === false) {
+        navigate("/");
+      } else {
+        if (localStorage.role === "Admin") {
+          navigate("/admin");
+        } else if (localStorage.role === "User") {
+          navigate("/");
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  const checkUser = async () => {
+    try {
+      const response = await API.get("/check-auth");
+
+      // Get token from local storage
+      console.log("ini test responseeeee", response);
+
+      // If the token incorrect
+      if (response.status === 404) {
+        return dispatch({
+          type: "AUTH_ERROR",
+        });
+      }
+
+      // Get user data
+      let payload = response.data.data;
+      // Get token from local storage
+      console.log("ini payload testtt", payload);
+      payload.token = localStorage.token;
+
+      // Send data to useContext
+      dispatch({
+        type: "USER_SUCCESS",
+        payload,
+      });
+      setIsLoading(false);
+    } catch (error) {
+      console.log(error);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (localStorage.token) {
+      checkUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <>
+      <Navbars />
+      <Routes>
+        <Route path="/" element={<Beranda />}></Route>
+        <Route path="/music/:id" element={<Music />}></Route>
+        <Route path="/all-music/" element={<AllMusic />}></Route>
+        <Route path="/pay" element={<Pay />}></Route>
+
+        <Route path="/admin" element={<PrivateRouteAdmin />}>
+          <Route path="/admin" element={<Transaction />}></Route>
+          <Route path="/admin/add-music" element={<AddMusic />}></Route>
+          <Route path="/admin/add-artist" element={<AddArtist />}></Route>
+        </Route>
+
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </>
+  );
+}
+
+export default App;
